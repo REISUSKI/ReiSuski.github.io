@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Trivia Game</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 40px;
+      background-color: lightblue;
+    }
+
+    h1 {
+      font-size: 36px;
+      margin-bottom: 20px;
+    }
+
+    .question {
+      font-size: 22px;
+      margin-bottom: 20px;
+      font-weight: bold;
+    }
+
+    .options button {
+      display: block;
+      margin: 10px auto;
+      padding: 10px 25px;
+      font-size: 16px;
+      cursor: pointer;
+      border: none;
+      border-radius: 6px;
+      background: white;
+      transition: 0.2s;
+    }
+
+    .options button:hover {
+      background: #d8d8d8;
+    }
+
+    #nextBtn, #restartBtn {
+      margin-top: 25px;
+      padding: 10px 25px;
+      font-size: 17px;
+      border: none;
+      cursor: pointer;
+      border-radius: 6px;
+      background: #fff;
+    }
+
+    #nextBtn:hover, #restartBtn:hover {
+      background: #d8d8d8;
+    }
+
+    #leaderboard {
+      margin-top: 30px;
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      width: 300px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    #leaderboard ol {
+      text-align: left;
+      padding-left: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>VERY FUN Trivia Game</h1>
+
+  <div id="game">
+    <div id="questionContainer"></div>
+    <div id="options" class="options"></div>
+
+    <button id="nextBtn" style="display:none;">Next</button>
+    <div id="result"></div>
+    <button id="restartBtn" style="display:none;">Play Again</button>
+
+    <div id="leaderboard"></div>
+  </div>
+
+  <script>
+    const questions = [
+      {
+        question: "How much wood would a woodchuck chuck, if a woodchuck could chuck wood?",
+        options: ["none", "idk", "wood", "help"],
+        answer: "wood"
+      },
+      {
+        question: "If a dog chews shoes, whose shoes does he choose?",
+        options: ["yours", "mine", "idk", "theirs"],
+        answer: "yours"
+      },
+      {
+        question: "Can you can a can as a canner can can a can?",
+        options: ["yes", "no", "what the hell", "idk"],
+        answer: "yes"
+      },
+      {
+        question: "Fuzzy Wuzzy wasn’t very fuzzy, was he?",
+        options: ["Sure, bro", "Get out", "Nah, he fuzzy", "New Albert Einstein"],
+        answer: "Sure, bro"
+      },
+      {
+        question: "If two witches would watch two watches, which witch would watch which watch?",
+        options: ["none", "The useless one", "idk", "The second one"],
+        answer: "The useless one"
+      }
+    ];
+
+    let currentQuestion = 0;
+    let score = 0;
+
+    const questionContainer = document.getElementById("questionContainer");
+    const optionsContainer = document.getElementById("options");
+    const nextBtn = document.getElementById("nextBtn");
+    const result = document.getElementById("result");
+    const restartBtn = document.getElementById("restartBtn");
+    const leaderboardDiv = document.getElementById("leaderboard");
+
+    function showQuestion() {
+      const q = questions[currentQuestion];
+      questionContainer.innerHTML = `<div class="question">${q.question}</div>`;
+      optionsContainer.innerHTML = "";
+
+      q.options.forEach(option => {
+        const btn = document.createElement("button");
+        btn.textContent = option;
+        btn.onclick = () => selectAnswer(option);
+        optionsContainer.appendChild(btn);
+      });
+
+      nextBtn.style.display = "none";
+    }
+
+    function selectAnswer(option) {
+      const correct = questions[currentQuestion].answer;
+
+      if (option === correct) {
+        score++;
+        alert(" Correct!");
+      } else {
+        alert(" Wrong! Correct answer: " + correct);
+      }
+
+      nextBtn.style.display = "inline-block";
+    }
+
+    nextBtn.onclick = () => {
+      currentQuestion++;
+      if (currentQuestion < questions.length) {
+        showQuestion();
+      } else {
+        showResult();
+      }
+    };
+
+    function showResult() {
+      questionContainer.innerHTML = "";
+      optionsContainer.innerHTML = "";
+      nextBtn.style.display = "none";
+
+      result.innerHTML = `Did you cook or getted cooked? Your score: ${score} / ${questions.length}`;
+
+      saveScore();
+      showLeaderboard();
+
+      restartBtn.style.display = "inline-block";
+    }
+
+    // -------------------------
+    //  SIMPLE LEADERBOARD
+    // -------------------------
+
+    function saveScore() {
+      let name = prompt("Enter your name for the leaderboard:", "Player");
+      if (!name) name = "Player";
+
+      const entry = { name, score };
+
+      let leaderboard = JSON.parse(localStorage.getItem("leaderboard")) || [];
+      leaderboard.push(entry);
+
+      leaderboard.sort((a, b) => b.score - a.score);
+      leaderboard = leaderboard.slice(0, 10); // top 10
+
+      localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
+    }
+
+    function showLeaderboard() {
+      const leaderboard = JSON.parse(localStorage.getItem("leaderboard")) || [];
+
+      let html = "<h2> Leaderboard</h2><ol>";
+
+      leaderboard.forEach(entry => {
+        html += `<li>${entry.name}: ${entry.score}</li>`;
+      });
+
+      html += "</ol>";
+
+      leaderboardDiv.innerHTML = html;
+    }
+
+    restartBtn.onclick = () => {
+      currentQuestion = 0;
+      score = 0;
+      result.innerHTML = "";
+      restartBtn.style.display = "none";
+      showQuestion();
+    };
+
+    // Start the game
+    showQuestion();
+    showLeaderboard();
+  </script>
+
+</body>
+</html>
