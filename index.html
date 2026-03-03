@@ -1,223 +1,201 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Trivia Game</title>
-
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      margin: 40px;
-      background-color: lightblue;
-    }
-
-    h1 {
-      font-size: 36px;
-      margin-bottom: 20px;
-    }
-
-    .question {
-      font-size: 22px;
-      margin-bottom: 20px;
-      font-weight: bold;
-    }
-
-    .options button {
-      display: block;
-      margin: 10px auto;
-      padding: 10px 25px;
-      font-size: 16px;
-      cursor: pointer;
-      border: none;
-      border-radius: 6px;
-      background: white;
-      transition: 0.2s;
-    }
-
-    .options button:hover {
-      background: #d8d8d8;
-    }
-
-    #nextBtn, #restartBtn {
-      margin-top: 25px;
-      padding: 10px 25px;
-      font-size: 17px;
-      border: none;
-      cursor: pointer;
-      border-radius: 6px;
-      background: #fff;
-    }
-
-    #nextBtn:hover, #restartBtn:hover {
-      background: #d8d8d8;
-    }
-
-    #leaderboard {
-      margin-top: 30px;
-      background: white;
-      padding: 15px;
-      border-radius: 8px;
-      width: 300px;
-      margin-left: auto;
-      margin-right: auto;
-    }
-
-    #leaderboard ol {
-      text-align: left;
-      padding-left: 20px;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flappy Bird with Spikes</title>
+<style>
+  body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background: #70c5ce;
+    margin: 0;
+    overflow: hidden;
+    font-family: sans-serif;
+  }
+  canvas {
+    background: #70c5ce;
+    border: 2px solid #000;
+  }
+</style>
 </head>
 <body>
+<canvas id="gameCanvas" width="400" height="600"></canvas>
 
-  <h1>VERY FUN Trivia Game</h1>
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
 
-  <div id="game">
-    <div id="questionContainer"></div>
-    <div id="options" class="options"></div>
+const gravity = 0.6;
+const jumpHeight = -10;
+let gameOver = false;
 
-    <button id="nextBtn" style="display:none;">Next</button>
-    <div id="result"></div>
-    <button id="restartBtn" style="display:none;">Play Again</button>
+let bird = {
+  x: 50,
+  y: 300,
+  width: 30,
+  height: 30,
+  velocity: 0
+};
 
-    <div id="leaderboard"></div>
-  </div>
+let pipes = [];
+let pipeWidth = 50;
+let gapHeight = 150;
+let pipeSpeed = 2;
+let score = 0;
 
-  <script>
-    const questions = [
-      {
-        question: "How much wood would a woodchuck chuck, if a woodchuck could chuck wood?",
-        options: ["none", "idk", "wood", "help"],
-        answer: "wood"
-      },
-      {
-        question: "If a dog chews shoes, whose shoes does he choose?",
-        options: ["yours", "mine", "idk", "theirs"],
-        answer: "yours"
-      },
-      {
-        question: "Can you can a can as a canner can can a can?",
-        options: ["yes", "no", "what the hell", "idk"],
-        answer: "yes"
-      },
-      {
-        question: "Fuzzy Wuzzy wasn’t very fuzzy, was he?",
-        options: ["Sure, bro", "Get out", "Nah, he fuzzy", "New Albert Einstein"],
-        answer: "Sure, bro"
-      },
-      {
-        question: "If two witches would watch two watches, which witch would watch which watch?",
-        options: ["none", "The useless one", "idk", "The second one"],
-        answer: "The useless one"
+// Load high score from localStorage
+let highScore = 0;
+if (localStorage.getItem("flappyHighScore")) {
+  const data = JSON.parse(localStorage.getItem("flappyHighScore"));
+  highScore = data.highScore || 0;
+}
+
+// Create new pipes
+function createPipe() {
+  let topHeight = Math.random() * (canvas.height - gapHeight - 100) + 50;
+  pipes.push({
+    x: canvas.width,
+    top: topHeight,
+    bottom: canvas.height - topHeight - gapHeight,
+    scored: false
+  });
+}
+
+// Handle bird jump
+function jump() {
+  bird.velocity = jumpHeight;
+}
+
+// Save high score to localStorage
+function saveHighScore(score) {
+  const data = { highScore: score };
+  localStorage.setItem("flappyHighScore", JSON.stringify(data));
+}
+
+// Draw bird with more details
+function drawBird() {
+  // Body
+  ctx.fillStyle = "yellow";
+  ctx.beginPath();
+  ctx.arc(bird.x + bird.width/2, bird.y + bird.height/2, bird.width/2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.closePath();
+
+  // Eye
+  ctx.fillStyle = "black";
+  ctx.beginPath();
+  ctx.arc(bird.x + bird.width*0.65, bird.y + bird.height*0.35, 3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.closePath();
+
+  // Beak
+  ctx.fillStyle = "orange";
+  ctx.beginPath();
+  ctx.moveTo(bird.x + bird.width, bird.y + bird.height/2 - 5);
+  ctx.lineTo(bird.x + bird.width + 10, bird.y + bird.height/2);
+  ctx.lineTo(bird.x + bird.width, bird.y + bird.height/2 + 5);
+  ctx.fill();
+  ctx.closePath();
+}
+
+// Draw pipes with spikes
+function drawPipeWithSpikes(pipe) {
+  ctx.fillStyle = "green";
+  // Top pipe
+  ctx.fillRect(pipe.x, 0, pipeWidth, pipe.top);
+  // Bottom pipe
+  ctx.fillRect(pipe.x, canvas.height - pipe.bottom, pipeWidth, pipe.bottom);
+
+  // Top spikes
+  ctx.fillStyle = "darkgreen";
+  for(let i=0; i<pipeWidth; i+=10){
+    ctx.beginPath();
+    ctx.moveTo(pipe.x + i, pipe.top);
+    ctx.lineTo(pipe.x + i + 5, pipe.top - 10);
+    ctx.lineTo(pipe.x + i + 10, pipe.top);
+    ctx.fill();
+    ctx.closePath();
+  }
+
+  // Bottom spikes
+  for(let i=0; i<pipeWidth; i+=10){
+    ctx.beginPath();
+    ctx.moveTo(pipe.x + i, canvas.height - pipe.bottom);
+    ctx.lineTo(pipe.x + i + 5, canvas.height - pipe.bottom + 10);
+    ctx.lineTo(pipe.x + i + 10, canvas.height - pipe.bottom);
+    ctx.fill();
+    ctx.closePath();
+  }
+}
+
+// Game loop
+let frame = 0;
+function update() {
+  if (gameOver) return;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Bird physics
+  bird.velocity += gravity;
+  bird.y += bird.velocity;
+
+  drawBird();
+
+  // Pipes
+  for (let i = 0; i < pipes.length; i++) {
+    let p = pipes[i];
+    p.x -= pipeSpeed;
+    drawPipeWithSpikes(p);
+
+    // Collision detection
+    if (
+      bird.x < p.x + pipeWidth &&
+      bird.x + bird.width > p.x &&
+      (bird.y < p.top || bird.y + bird.height > canvas.height - p.bottom)
+    ) {
+      gameOver = true;
+      if (score > highScore) {
+        highScore = score;
+        saveHighScore(highScore);
       }
-    ];
-
-    let currentQuestion = 0;
-    let score = 0;
-
-    const questionContainer = document.getElementById("questionContainer");
-    const optionsContainer = document.getElementById("options");
-    const nextBtn = document.getElementById("nextBtn");
-    const result = document.getElementById("result");
-    const restartBtn = document.getElementById("restartBtn");
-    const leaderboardDiv = document.getElementById("leaderboard");
-
-    function showQuestion() {
-      const q = questions[currentQuestion];
-      questionContainer.innerHTML = `<div class="question">${q.question}</div>`;
-      optionsContainer.innerHTML = "";
-
-      q.options.forEach(option => {
-        const btn = document.createElement("button");
-        btn.textContent = option;
-        btn.onclick = () => selectAnswer(option);
-        optionsContainer.appendChild(btn);
-      });
-
-      nextBtn.style.display = "none";
+      alert("Game Over! Score: " + score + "\nHigh Score: " + highScore);
+      document.location.reload();
     }
 
-    function selectAnswer(option) {
-      const correct = questions[currentQuestion].answer;
-
-      if (option === correct) {
-        score++;
-        alert(" Correct!");
-      } else {
-        alert(" Wrong! Correct answer: " + correct);
-      }
-
-      nextBtn.style.display = "inline-block";
+    // Increase score when bird passes pipe
+    if (!p.scored && p.x + pipeWidth < bird.x) {
+      score++;
+      p.scored = true;
     }
+  }
 
-    nextBtn.onclick = () => {
-      currentQuestion++;
-      if (currentQuestion < questions.length) {
-        showQuestion();
-      } else {
-        showResult();
-      }
-    };
+  // Remove offscreen pipes
+  if (pipes.length > 0 && pipes[0].x + pipeWidth < 0) {
+    pipes.shift();
+  }
 
-    function showResult() {
-      questionContainer.innerHTML = "";
-      optionsContainer.innerHTML = "";
-      nextBtn.style.display = "none";
+  // Draw score
+  ctx.fillStyle = "white";
+  ctx.font = "24px Arial";
+  ctx.fillText("Score: " + score, 10, 30);
+  ctx.fillText("High Score: " + highScore, 10, 60);
 
-      result.innerHTML = `Did you cook or getted cooked? Your score: ${score} / ${questions.length}`;
+  // Add pipes every 150 frames
+  if (frame % 150 === 0) {
+    createPipe();
+  }
 
-      saveScore();
-      showLeaderboard();
+  frame++;
+  requestAnimationFrame(update);
+}
 
-      restartBtn.style.display = "inline-block";
-    }
+document.addEventListener("keydown", jump);
+document.addEventListener("click", jump);
 
-    // -------------------------
-    //  SIMPLE LEADERBOARD
-    // -------------------------
-
-    function saveScore() {
-      let name = prompt("Enter your name for the leaderboard:", "Player");
-      if (!name) name = "Player";
-
-      const entry = { name, score };
-
-      let leaderboard = JSON.parse(localStorage.getItem("leaderboard")) || [];
-      leaderboard.push(entry);
-
-      leaderboard.sort((a, b) => b.score - a.score);
-      leaderboard = leaderboard.slice(0, 10); // top 10
-
-      localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
-    }
-
-    function showLeaderboard() {
-      const leaderboard = JSON.parse(localStorage.getItem("leaderboard")) || [];
-
-      let html = "<h2> Leaderboard</h2><ol>";
-
-      leaderboard.forEach(entry => {
-        html += `<li>${entry.name}: ${entry.score}</li>`;
-      });
-
-      html += "</ol>";
-
-      leaderboardDiv.innerHTML = html;
-    }
-
-    restartBtn.onclick = () => {
-      currentQuestion = 0;
-      score = 0;
-      result.innerHTML = "";
-      restartBtn.style.display = "none";
-      showQuestion();
-    };
-
-    // Start the game
-    showQuestion();
-    showLeaderboard();
-  </script>
-
+update();
+</script>
 </body>
 </html>
